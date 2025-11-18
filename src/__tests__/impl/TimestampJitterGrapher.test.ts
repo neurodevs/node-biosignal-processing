@@ -1,6 +1,9 @@
+import { randomInt } from 'crypto'
+import { callsToWriteFile } from '@neurodevs/fake-node-core'
+import generateId from '@neurodevs/generate-id'
 import { test, assert } from '@neurodevs/node-tdd'
 
-import { FakeXdfLoader } from '@neurodevs/node-xdf'
+import { FakeXdfLoader, XdfStream } from '@neurodevs/node-xdf'
 import TimestampJitterGrapher, {
     JitterGrapher,
 } from '../../impl/TimestampJitterGrapher.js'
@@ -11,6 +14,11 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
     protected static async beforeEach() {
         await super.beforeEach()
+
+        this.setFakeXdfLoader()
+        this.setFakeWriteFile()
+
+        FakeXdfLoader.fakeResponse = this.fakeXdfFile
 
         this.instance = await this.TimestampJitterGrapher()
     }
@@ -40,19 +48,82 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         )
     }
 
+    @test()
+    protected static async writesResultsToJsonFile() {
+        await this.run()
+
+        assert.isEqualDeep(
+            callsToWriteFile[0],
+            {
+                file: this.resultsJsonPath,
+                data: JSON.stringify(this.resultsJson, null, 4),
+                options: undefined,
+            },
+            'Did not write results to JSON file!'
+        )
+    }
+
     private static async run() {
         await this.instance.run()
+    }
+
+    public static createFakeStream(options?: Partial<XdfStream>): XdfStream {
+        return {
+            id: randomInt(1, 10),
+            name: generateId(),
+            type: generateId(),
+            channelCount: randomInt(1, 10),
+            channelFormat: 'float32',
+            nominalSampleRateHz: 100 * Math.random(),
+            data: [],
+            timestamps: Array.from(
+                { length: 10 },
+                (_, i) => i / this.sampleRateHz + (Math.random() - 0.5) * 0.1
+            ),
+            ...options,
+        }
     }
 
     private static readonly xdfInputPath = this.generateId()
     private static readonly outputDir = this.generateId()
     private static readonly sampleRateHz = 100 * Math.random()
 
-    private static async TimestampJitterGrapher() {
-        return TimestampJitterGrapher.Create({
+    private static readonly fakeStreams = [
+        this.createFakeStream(),
+        this.createFakeStream(),
+    ]
+
+    private static readonly fakeXdfFile = {
+        path: '',
+        streams: this.fakeStreams,
+        events: [],
+    }
+
+    private static readonly resultsJsonPath = `${this.outputDir}/results.json`
+
+    private static get resultsJson() {
+        return {
             xdfInputPath: this.xdfInputPath,
             outputDir: this.outputDir,
+            resultsJsonPath: this.resultsJsonPath,
             sampleRateHz: this.sampleRateHz,
-        })
+            streams: this.fakeStreamsMetadata,
+        }
+    }
+
+    private static readonly defaultOptions = {
+        xdfInputPath: this.xdfInputPath,
+        outputDir: this.outputDir,
+        sampleRateHz: this.sampleRateHz,
+    }
+
+    private static get fakeStreamsMetadata() {
+        return this.fakeStreams.map(
+            ({ data: _data, timestamps: _timestamps, ...rest }) => rest
+        )
+    }
+
+    private static async TimestampJitterGrapher() {
+        return TimestampJitterGrapher.Create(this.defaultOptions)
     }
 }

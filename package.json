@@ -48,6 +48,7 @@
     "@neurodevs/node-xdf": "^1.4.6"
   },
   "devDependencies": {
+    "@neurodevs/fake-node-core": "^0.7.2",
     "@neurodevs/generate-id": "^1.0.9",
     "@neurodevs/node-tdd": "^0.2.2",
     "@sprucelabs/jest-json-reporter": "^10.0.6",
