@@ -78,7 +78,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             data: [],
             timestamps: Array.from(
                 { length: 10 },
-                (_, i) => i / this.sampleRateHz + (Math.random() - 0.5) * 0.1
+                (_, i) => i + (Math.random() - 0.5) * 0.1
             ),
             ...options,
         }
@@ -86,7 +86,6 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
     private static readonly xdfInputPath = this.generateId()
     private static readonly outputDir = this.generateId()
-    private static readonly sampleRateHz = 100 * Math.random()
 
     private static readonly fakeStreams = [
         this.createFakeStream(),
@@ -106,15 +105,8 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             xdfInputPath: this.xdfInputPath,
             outputDir: this.outputDir,
             resultsJsonPath: this.resultsJsonPath,
-            sampleRateHz: this.sampleRateHz,
             streams: this.fakeStreamsMetadata,
         }
-    }
-
-    private static readonly defaultOptions = {
-        xdfInputPath: this.xdfInputPath,
-        outputDir: this.outputDir,
-        sampleRateHz: this.sampleRateHz,
     }
 
     private static get fakeStreamsMetadata() {
@@ -124,6 +116,6 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     private static async TimestampJitterGrapher() {
-        return TimestampJitterGrapher.Create(this.defaultOptions)
+        return TimestampJitterGrapher.Create(this.xdfInputPath, this.outputDir)
     }
 }

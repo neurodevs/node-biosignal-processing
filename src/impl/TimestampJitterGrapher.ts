@@ -7,23 +7,21 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
     private xdfInputPath: string
     private outputDir: string
-    private sampleRateHz: number
     private loader: XdfLoader
 
     private xdfFile!: XdfFile
 
     protected constructor(options: JitterGrapherConstructorOptions) {
-        const { xdfInputPath, outputDir, sampleRateHz, loader } = options
+        const { xdfInputPath, outputDir, loader } = options
 
         this.xdfInputPath = xdfInputPath
         this.outputDir = outputDir
-        this.sampleRateHz = sampleRateHz
         this.loader = loader
     }
 
-    public static async Create(options: JitterGrapherOptions) {
+    public static async Create(xdfInputPath: string, outputDir: string) {
         const loader = await this.XdfFileLoader()
-        return new (this.Class ?? this)({ ...options, loader })
+        return new (this.Class ?? this)({ xdfInputPath, outputDir, loader })
     }
 
     public async run() {
@@ -51,7 +49,6 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             xdfInputPath: this.xdfInputPath,
             outputDir: this.outputDir,
             resultsJsonPath: this.resultsJsonPath,
-            sampleRateHz: this.sampleRateHz,
             streams: this.xdfStreamsMetadata,
         }
     }
@@ -79,12 +76,8 @@ export type JitterGrapherConstructor = new (
     options: JitterGrapherConstructorOptions
 ) => JitterGrapher
 
-export interface JitterGrapherOptions {
+export interface JitterGrapherConstructorOptions {
     xdfInputPath: string
     outputDir: string
-    sampleRateHz: number
-}
-
-export interface JitterGrapherConstructorOptions extends JitterGrapherOptions {
     loader: XdfLoader
 }
