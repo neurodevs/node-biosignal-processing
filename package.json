@@ -1,7 +1,26 @@
 {
-  "name": "node-biosignal-processing",
+  "name": "@neurodevs/node-biosignal-processing",
   "version": "0.0.1",
-  "repository": "https://github.com/neurodevs/node-biosignal-processing.git",
+  "description": "Biosignal processing for EEG, PPG, and more in Node.js",
+  "keywords": [
+    "nodejs",
+    "typescript",
+    "tdd",
+    "biosignals",
+    "eeg",
+    "ppg"
+  ],
+  "license": "MIT",
+  "author": "Eric Yates <hello@ericthecurious.com>",
+  "homepage": "https://github.com/neurodevs/node-biosignal-processing",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/neurodevs/node-biosignal-processing.git"
+  },
+  "bugs": {
+    "url": "https://github.com/neurodevs/node-biosignal-processing/issues"
+  },
+  "main": "build/index.js",
   "scripts": {
     "build.ci": "yarn run build.tsc && yarn run build.resolve-paths && yarn run lint",
     "build.dev": "yarn run build.tsc --sourceMap ; yarn run resolve-paths.lint",
@@ -24,6 +43,7 @@
     "watch.rebuild": "yarn run clean.all && yarn install && yarn run watch.build.dev",
     "watch.tsc": "tsc -w"
   },
+  "dependencies": {},
   "devDependencies": {
     "@sprucelabs/resolve-path-aliases": "^4.0.4",
     "@types/node": "^24.10.1",
@@ -35,7 +55,6 @@
     "tsc-watch": "^7.2.0",
     "typescript": "^5.9.3"
   },
-  "description": "Biosignal processing for EEG, PPG, and more in Node.js",
   "skill": {
     "namespace": "node-biosignal-processing"
   }
