@@ -2,6 +2,7 @@
   "name": "@neurodevs/node-biosignal-processing",
   "version": "0.0.1",
   "description": "Biosignal processing for EEG, PPG, and more in Node.js",
+  "type": "module",
   "keywords": [
     "nodejs",
     "typescript",
