@@ -45,7 +45,9 @@
     "watch.tsc": "tsc -w"
   },
   "dependencies": {
-    "@neurodevs/node-xdf": "^1.4.6"
+    "@neurodevs/node-xdf": "^1.4.6",
+    "canvas": "^3.2.0",
+    "plotly.js-dist-min": "^3.3.0"
   },
   "devDependencies": {
     "@neurodevs/fake-node-core": "^0.7.2",
@@ -56,6 +58,7 @@
     "@sprucelabs/test": "^11.0.0",
     "@sprucelabs/test-utils": "^7.0.9",
     "@types/node": "^24.10.1",
+    "@types/plotly.js-dist-min": "^2.3.4",
     "chokidar-cli": "^3.0.0",
     "eslint": "^9.39.1",
     "eslint-config-spruce": "^11.2.26",
@@ -84,7 +87,8 @@
       "**/__tests__/**/*.test.js?(x)"
     ],
     "moduleNameMapper": {
-      "^#spruce/(.*)$": "<rootDir>/build/.spruce/$1"
+      "^#spruce/(.*)$": "<rootDir>/build/.spruce/$1",
+      "^plotly.js-dist-min$": "<rootDir>/build/testDoubles/Plotly/FakePlotly.js"
     }
   }
 }
