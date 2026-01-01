@@ -51,7 +51,7 @@
   },
   "devDependencies": {
     "@neurodevs/fake-node-core": "0.10.0",
-    "@neurodevs/generate-id": "1.1.1",
+    "@neurodevs/generate-id": "1.1.2",
     "@neurodevs/node-tdd": "0.2.3",
     "@sprucelabs/jest-json-reporter": "^10.0.6",
     "@sprucelabs/resolve-path-aliases": "^4.0.4",
