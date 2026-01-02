@@ -52,7 +52,7 @@
   "devDependencies": {
     "@neurodevs/fake-node-core": "0.10.0",
     "@neurodevs/generate-id": "1.1.2",
-    "@neurodevs/node-tdd": "0.2.4",
+    "@neurodevs/node-tdd": "0.2.5",
     "@sprucelabs/jest-json-reporter": "^10.0.6",
     "@sprucelabs/resolve-path-aliases": "^4.0.4",
     "@sprucelabs/test": "^11.0.0",
