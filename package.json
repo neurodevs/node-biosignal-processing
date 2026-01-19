@@ -50,7 +50,7 @@
     "plotly.js-dist-min": "^3.3.0"
   },
   "devDependencies": {
-    "@neurodevs/fake-node-core": "0.10.0",
+    "@neurodevs/fake-node-core": "0.11.1",
     "@neurodevs/generate-id": "1.1.2",
     "@neurodevs/node-tdd": "0.2.5",
     "@sprucelabs/jest-json-reporter": "^10.0.6",
