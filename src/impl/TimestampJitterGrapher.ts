@@ -1,5 +1,7 @@
 import { writeFile } from 'fs/promises'
 import { XdfFile, XdfFileLoader, XdfLoader } from '@neurodevs/node-xdf'
+import { parse, View } from 'vega'
+import { compile, TopLevelSpec } from 'vega-lite'
 
 export default class TimestampJitterGrapher implements JitterGrapher {
     public static Class?: JitterGrapherConstructor
@@ -29,6 +31,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         await this.loadXdfFile()
         await this.calculateResults()
         await this.writeResultsJsonFile()
+        await this.writeIntervalsPlotPng()
     }
 
     private async loadXdfFile() {
@@ -50,6 +53,10 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                 }
             }
         )
+    }
+
+    private get streams() {
+        return this.xdfFile.streams
     }
 
     private throwsIfNotEnoughData() {
@@ -86,8 +93,106 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         }
     }
 
-    private get streams() {
-        return this.xdfFile.streams
+    private async writeIntervalsPlotPng() {
+        const data = this.flattenIntervalsForPlot()
+
+        const vlSpec: TopLevelSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            data: { values: data },
+            facet: {
+                row: {
+                    field: 'streamName',
+                    type: 'nominal',
+                    title: null,
+                    header: {
+                        labelAngle: 0,
+                        labelAlign: 'left',
+                    },
+                },
+            },
+            spec: {
+                width: 3000,
+                height: 200,
+                layer: [
+                    {
+                        mark: { type: 'line', interpolate: 'step-after' },
+                        encoding: {
+                            x: {
+                                field: 'timeSec',
+                                type: 'quantitative',
+                                title: 'Time (s)',
+                            },
+                            y: {
+                                field: 'intervalMs',
+                                type: 'quantitative',
+                                title: 'ΔT = T(t+1) − T(t) (ms)',
+                            },
+                            order: { field: 'timeSec', type: 'quantitative' },
+                        },
+                    },
+                    {
+                        mark: {
+                            type: 'rule',
+                            color: 'red',
+                            strokeWidth: 2,
+                        },
+                        encoding: {
+                            y: {
+                                field: 'idealIntervalMs',
+                                type: 'quantitative',
+                            },
+                        },
+                    },
+                ],
+            },
+            resolve: {
+                scale: {
+                    x: 'shared',
+                },
+            },
+        } as const
+
+        const vgSpec = compile(vlSpec).spec
+        const runtime = parse(vgSpec)
+
+        const view = new View(runtime, { renderer: 'none' }).initialize()
+
+        const canvas = await view.toCanvas()
+        const buffer = canvas.toBuffer('image/png')
+
+        await this.writeFile(
+            `${this.outputDir}/intervals_over_time.png`,
+            buffer
+        )
+    }
+
+    private flattenIntervalsForPlot() {
+        const rows: {
+            streamName: string
+            timeSec: number
+            intervalMs: number
+            idealIntervalMs: number
+        }[] = []
+
+        this.streams.forEach((stream, streamIndex) => {
+            const { intervalsMs, nominalSampleRateHz } =
+                this.streamResults[streamIndex]
+
+            const idealIntervalMs = 1000 / nominalSampleRateHz
+
+            for (let i = 0; i < intervalsMs.length; i++) {
+                const timestamps = stream.timestamps.slice(1)
+
+                rows.push({
+                    streamName: stream.name,
+                    timeSec: timestamps[i],
+                    intervalMs: intervalsMs[i],
+                    idealIntervalMs,
+                })
+            }
+        })
+
+        return rows
     }
 
     private get writeFile() {

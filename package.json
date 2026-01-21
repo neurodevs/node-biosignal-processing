@@ -45,7 +45,11 @@
     "watch.tsc": "tsc -w"
   },
   "dependencies": {
-    "@neurodevs/node-xdf": "^3.0.2"
+    "@neurodevs/node-xdf": "^3.0.2",
+    "canvas": "^3.2.1",
+    "vega": "^6.2.0",
+    "vega-lite": "^6.4.2",
+    "vega-node": "^0.1.0"
   },
   "devDependencies": {
     "@neurodevs/fake-node-core": "0.11.1",
