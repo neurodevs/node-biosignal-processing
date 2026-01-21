@@ -14,6 +14,8 @@ import AbstractPackageTest from '../AbstractPackageTest.js'
 export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     private static instance: JitterGrapher
 
+    private static readonly tenSeconds = 10
+
     protected static async beforeEach() {
         await super.beforeEach()
 
@@ -98,6 +100,23 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             },
             'Did not write intervals plot PNG file!'
         )
+    }
+
+    @test()
+    protected static async onlySamplesTenSecondsOfData() {
+        await this.run()
+
+        const streamResults = JSON.parse(callsToWriteFile[0].data).streamResults
+
+        for (const streamResult of streamResults) {
+            const numIntervals = streamResult.intervalsMs.length
+            const expected = this.tenSeconds * streamResult.nominalSampleRateHz
+
+            assert.isTrue(
+                numIntervals <= expected,
+                `Stream result has more than 10 seconds of data! Found ${numIntervals} intervals, expected maximum ${expected}.`
+            )
+        }
     }
 
     private static async run() {
@@ -186,11 +205,11 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             const { intervalsMs, nominalSampleRateHz } =
                 this.fakeStreamResults[streamIndex]
 
+            const timestamps = stream.timestamps.slice(1)
+            const maxIndex = this.tenSeconds * nominalSampleRateHz
             const idealIntervalMs = 1000 / nominalSampleRateHz
 
-            for (let i = 0; i < intervalsMs.length; i++) {
-                const timestamps = stream.timestamps.slice(1)
-
+            for (let i = 0; i < maxIndex; i++) {
                 rows.push({
                     streamName: stream.name,
                     timeSec: timestamps[i],
@@ -205,6 +224,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
     public static createFakeStream(options?: Partial<XdfStream>): XdfStream {
         const channelCount = randomInt(1, 10)
+        const nominalSampleRateHz = 1 + Math.random() * 0.1
 
         return {
             id: randomInt(1, 10),
@@ -212,16 +232,16 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             type: generateId(),
             channelCount,
             channelFormat: 'float32',
-            nominalSampleRateHz: 100 * Math.random(),
-            data: Array.from({ length: 10 }, (_, i) =>
+            nominalSampleRateHz,
+            data: Array.from({ length: 20 }, (_, i) =>
                 Array.from(
                     { length: channelCount },
                     () => i + (Math.random() - 0.5)
                 )
             ),
             timestamps: Array.from(
-                { length: 10 },
-                (_, i) => i + (Math.random() - 0.5)
+                { length: 20 },
+                (_, i) => i / nominalSampleRateHz
             ),
             ...options,
         }
@@ -243,13 +263,16 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     private static readonly fakeStreamResults = this.fakeStreams.map(
-        ({ data: _data, timestamps, ...rest }) => {
+        ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
+            const maxIndex = this.tenSeconds * nominalSampleRateHz
+
             const intervalsMs = timestamps
-                .slice(1)
+                .slice(1, maxIndex)
                 .map((t, i) => (t - timestamps[i]) * 1000)
 
             return {
                 ...rest,
+                nominalSampleRateHz,
                 intervalsMs,
             }
         }

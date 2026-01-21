@@ -14,6 +14,8 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     private xdfFile!: XdfFile
     private streamResults!: StreamResult[]
 
+    private readonly tenSeconds = 10
+
     protected constructor(options: JitterGrapherConstructorOptions) {
         const { xdfInputPath, outputDir, loader } = options
 
@@ -42,13 +44,16 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         this.throwsIfNotEnoughData()
 
         this.streamResults = this.streams.map(
-            ({ data: _data, timestamps, ...rest }) => {
+            ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
+                const maxIndex = this.tenSeconds * nominalSampleRateHz
+
                 const intervalsMs = timestamps
-                    .slice(1)
+                    .slice(1, maxIndex)
                     .map((t, i) => (t - timestamps[i]) * 1000)
 
                 return {
                     ...rest,
+                    nominalSampleRateHz,
                     intervalsMs,
                 }
             }
@@ -178,11 +183,11 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             const { intervalsMs, nominalSampleRateHz } =
                 this.streamResults[streamIndex]
 
+            const timestamps = stream.timestamps.slice(1)
+            const maxIndex = this.tenSeconds * nominalSampleRateHz
             const idealIntervalMs = 1000 / nominalSampleRateHz
 
-            for (let i = 0; i < intervalsMs.length; i++) {
-                const timestamps = stream.timestamps.slice(1)
-
+            for (let i = 0; i < maxIndex; i++) {
                 rows.push({
                     streamName: stream.name,
                     timeSec: timestamps[i],
