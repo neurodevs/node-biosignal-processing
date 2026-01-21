@@ -190,7 +190,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             for (let i = 0; i < maxIndex; i++) {
                 rows.push({
                     streamName: stream.name,
-                    timeSec: timestamps[i],
+                    timeSec: timestamps[i] - timestamps[0],
                     intervalMs: intervalsMs[i],
                     idealIntervalMs,
                 })
