@@ -49,6 +49,26 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     @test()
+    protected static async throwsIfNotEnoughData() {
+        const invalidCounts = [0, 1]
+
+        for (const count of invalidCounts) {
+            FakeXdfLoader.fakeResponse = {
+                ...this.fakeXdfFile,
+                streams: this.fakeStreams.map((s) => ({
+                    ...s,
+                    data: s.data.slice(0, count),
+                    timestamps: s.timestamps.slice(0, count),
+                })),
+            }
+
+            await assert.doesThrowAsync(async () => {
+                await this.instance.run()
+            }, `Cannot calculate jitter with less than 2 samples! \n\nFound: ${count} samples in stream ${this.fakeStreams[0].name} and ${count} samples in stream ${this.fakeStreams[1].name}.\n`)
+        }
+    }
+
+    @test()
     protected static async writesResultsToJsonFile() {
         await this.run()
 
@@ -68,17 +88,24 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     public static createFakeStream(options?: Partial<XdfStream>): XdfStream {
+        const channelCount = randomInt(1, 10)
+
         return {
             id: randomInt(1, 10),
             name: generateId(),
             type: generateId(),
-            channelCount: randomInt(1, 10),
+            channelCount,
             channelFormat: 'float32',
             nominalSampleRateHz: 100 * Math.random(),
-            data: [],
+            data: Array.from({ length: 10 }, (_, i) =>
+                Array.from(
+                    { length: channelCount },
+                    () => i + (Math.random() - 0.5)
+                )
+            ),
             timestamps: Array.from(
                 { length: 10 },
-                (_, i) => i + (Math.random() - 0.5) * 0.1
+                (_, i) => i + (Math.random() - 0.5)
             ),
             ...options,
         }
