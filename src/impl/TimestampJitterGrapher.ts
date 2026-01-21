@@ -56,12 +56,12 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         const invalidStreams = this.streams.filter((s) => s.data.length < 2)
 
         if (invalidStreams.length > 0) {
-            const countsDescription = invalidStreams
+            const countsByStream = invalidStreams
                 .map((s) => `${s.data.length} samples in stream ${s.name}`)
                 .join(' and ')
 
             throw new Error(
-                `Cannot calculate jitter with less than 2 samples! \n\nFound: ${countsDescription}.\n`
+                `Cannot calculate jitter with less than 2 samples! \n\nFound: ${countsByStream}.\n`
             )
         }
     }
