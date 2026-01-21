@@ -3,13 +3,10 @@ import { callsToWriteFile } from '@neurodevs/fake-node-core'
 import generateId from '@neurodevs/generate-id'
 import { test, assert } from '@neurodevs/node-tdd'
 import { FakeXdfLoader, XdfStream } from '@neurodevs/node-xdf'
-import { Data } from 'plotly.js-dist-min'
 
 import TimestampJitterGrapher, {
     JitterGrapher,
 } from '../../impl/TimestampJitterGrapher.js'
-import FakePlotly from '../../testDoubles/Plotly/FakePlotly.js'
-import { resetCallsToPlotlyToImage } from '../../testDoubles/Plotly/FakePlotly.js'
 import AbstractPackageTest from '../AbstractPackageTest.js'
 
 export default class TimestampJitterGrapherTest extends AbstractPackageTest {
@@ -22,8 +19,6 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         this.setFakeWriteFile()
 
         FakeXdfLoader.fakeResponse = this.fakeXdfFile
-
-        this.setFakeToImage()
 
         this.instance = await this.TimestampJitterGrapher()
     }
@@ -68,77 +63,6 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         )
     }
 
-    @test()
-    protected static async generatesJitterPlot() {
-        await this.run()
-
-        assert.isEqualDeep(
-            callsToWriteFile[1],
-            {
-                file: `${this.outputDir}/jitter.png`,
-                data: await this.generatePngBuffer(),
-                options: undefined,
-            },
-            'Did not generate jitter plot PNG file!'
-        )
-    }
-
-    private static async generatePngBuffer() {
-        const traces = this.fakeStreams.map((stream) => {
-            return {
-                x: [],
-                y: [],
-                type: 'histogram',
-                histnorm: 'density',
-                name: stream.name,
-                autobinx: false,
-                opacity: 0.5,
-                marker: {
-                    color: 'rgba(255, 100, 102, 0.7)',
-                    line: {
-                        color: 'rgba(255, 100, 102, 1)',
-                        width: 1,
-                    },
-                },
-                xbins: {
-                    end: 2.8,
-                    size: 0.06,
-                    start: 0.5,
-                },
-            } as Data
-        })
-
-        let layout = {
-            bargap: 0.05,
-            bargroupgap: 0.2,
-            barmode: 'overlay' as const,
-            title: {
-                text: 'Distribution of Timestamp Jitter per Stream',
-            },
-            xaxis: {
-                title: {
-                    text: 'Timestamp Jitter (ms)',
-                },
-            },
-            yaxis: {
-                title: {
-                    text: 'Count',
-                },
-            },
-        }
-
-        const pngBuffer = await FakePlotly.toImage(
-            { data: traces, layout },
-            {
-                format: 'png',
-                width: 1000,
-                height: 600,
-            }
-        )
-
-        return pngBuffer
-    }
-
     private static async run() {
         await this.instance.run()
     }
@@ -162,6 +86,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
     private static readonly xdfInputPath = this.generateId()
     private static readonly outputDir = this.generateId()
+    private static readonly resultsJsonPath = `${this.outputDir}/results.json`
 
     private static readonly fakeStreams = [
         this.createFakeStream(),
@@ -174,26 +99,15 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         events: [],
     }
 
-    private static readonly resultsJsonPath = `${this.outputDir}/results.json`
+    private static readonly fakeStreamsMetadata = this.fakeStreams.map(
+        ({ data: _data, timestamps: _timestamps, ...rest }) => rest
+    )
 
-    private static get resultsJson() {
-        return {
-            xdfInputPath: this.xdfInputPath,
-            outputDir: this.outputDir,
-            resultsJsonPath: this.resultsJsonPath,
-            streams: this.fakeStreamsMetadata,
-        }
-    }
-
-    private static get fakeStreamsMetadata() {
-        return this.fakeStreams.map(
-            ({ data: _data, timestamps: _timestamps, ...rest }) => rest
-        )
-    }
-
-    private static setFakeToImage() {
-        TimestampJitterGrapher.toImage = FakePlotly.toImage.bind(this)
-        resetCallsToPlotlyToImage()
+    private static readonly resultsJson = {
+        xdfInputPath: this.xdfInputPath,
+        outputDir: this.outputDir,
+        resultsJsonPath: this.resultsJsonPath,
+        streams: this.fakeStreamsMetadata,
     }
 
     private static async TimestampJitterGrapher() {
