@@ -126,15 +126,24 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         events: [],
     }
 
-    private static readonly fakeStreamsMetadata = this.fakeStreams.map(
-        ({ data: _data, timestamps: _timestamps, ...rest }) => rest
+    private static readonly fakeStreamResults = this.fakeStreams.map(
+        ({ data: _data, timestamps, ...rest }) => {
+            const intervalsMs = timestamps
+                .slice(1)
+                .map((t, i) => (t - timestamps[i]) * 1000)
+
+            return {
+                ...rest,
+                intervalsMs,
+            }
+        }
     )
 
     private static readonly resultsJson = {
         xdfInputPath: this.xdfInputPath,
         outputDir: this.outputDir,
         resultsJsonPath: this.resultsJsonPath,
-        streams: this.fakeStreamsMetadata,
+        streamResults: this.fakeStreamResults,
     }
 
     private static async TimestampJitterGrapher() {
