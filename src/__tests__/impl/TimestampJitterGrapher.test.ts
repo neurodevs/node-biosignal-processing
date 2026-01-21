@@ -141,7 +141,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                 },
             },
             spec: {
-                width: 2000,
+                width: 800,
                 height: 200,
                 layer: [
                     {

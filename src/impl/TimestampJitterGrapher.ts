@@ -116,7 +116,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                 },
             },
             spec: {
-                width: 2000,
+                width: 800,
                 height: 200,
                 layer: [
                     {
