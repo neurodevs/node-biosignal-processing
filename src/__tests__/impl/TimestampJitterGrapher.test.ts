@@ -151,6 +151,9 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                                 field: 'timeSec',
                                 type: 'quantitative',
                                 title: 'Time (s)',
+                                axis: {
+                                    tickMinStep: 1,
+                                },
                             },
                             y: {
                                 field: 'intervalMs',

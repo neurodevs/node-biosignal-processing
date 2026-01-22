@@ -126,6 +126,9 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                                 field: 'timeSec',
                                 type: 'quantitative',
                                 title: 'Time (s)',
+                                axis: {
+                                    tickMinStep: 1,
+                                },
                             },
                             y: {
                                 field: 'intervalMs',
