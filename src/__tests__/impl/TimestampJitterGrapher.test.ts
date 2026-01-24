@@ -145,7 +145,10 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                 height: 200,
                 layer: [
                     {
-                        mark: { type: 'line', interpolate: 'step-after' },
+                        mark: {
+                            type: 'tick',
+                            thickness: 2,
+                        },
                         encoding: {
                             x: {
                                 field: 'timeSec',
@@ -159,20 +162,6 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                                 field: 'intervalMs',
                                 type: 'quantitative',
                                 title: 'ΔT = T(t+1) − T(t) (ms)',
-                            },
-                            order: { field: 'timeSec', type: 'quantitative' },
-                        },
-                    },
-                    {
-                        mark: {
-                            type: 'rule',
-                            color: 'red',
-                            strokeWidth: 2,
-                        },
-                        encoding: {
-                            y: {
-                                field: 'idealIntervalMs',
-                                type: 'quantitative',
                             },
                         },
                     },
