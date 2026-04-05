@@ -1,0 +1,7 @@
+{
+  "version": "0.9.4",
+  "projectName": "node-biosignal-processing",
+  "remote": {
+    "url": "https://git.regressionproof.ai/liquidg3/node-biosignal-processing.git"
+  }
+}
