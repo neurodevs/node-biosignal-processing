@@ -39,8 +39,11 @@
     "watch.build.dev": "tsc-watch --sourceMap --onCompilationComplete 'yarn run build.copy-files'"
   },
   "dependencies": {
+    "@neurodevs/node-server-plots": "^0.4.3",
+    "@neurodevs/node-signal-processing": "^3.0.5",
     "@neurodevs/node-xdf": "^3.0.2",
-    "canvas": "^3.2.1",
+    "canvas": "^3.2.3",
+    "fast-csv": "^5.0.5",
     "vega": "^6.2.0",
     "vega-lite": "^6.4.2",
     "vega-node": "^0.1.0"

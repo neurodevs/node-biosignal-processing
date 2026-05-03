@@ -5,7 +5,7 @@
   "skipped": ["skill"],
   "installed": ["test"],
   "regressionproof": {
-    "enabled": true,
+    "enabled": false,
     "projectName": "node-biosignal-processing"
   }
 }

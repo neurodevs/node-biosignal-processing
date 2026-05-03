@@ -138,5 +138,12 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 
+# PNG test images
+*.png
+
+# CSV test files
+*.csv
+
+# Directories
 build/
 artifacts/
