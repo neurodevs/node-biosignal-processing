@@ -1,4 +1,4 @@
-import { randomInt } from 'crypto'
+import { randomInt } from 'node:crypto'
 import { callsToWriteFile } from '@neurodevs/fake-node-core'
 import generateId from '@neurodevs/generate-id'
 import { test, assert } from '@neurodevs/node-tdd'

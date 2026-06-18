@@ -1,4 +1,4 @@
-import { writeFile } from 'fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { XdfFile, XdfFileLoader, XdfLoader } from '@neurodevs/node-xdf'
 import { parse, View } from 'vega'
 import { compile, TopLevelSpec } from 'vega-lite'

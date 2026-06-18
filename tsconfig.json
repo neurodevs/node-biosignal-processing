@@ -1,9 +1,8 @@
 {
   "compilerOptions": {
     "module": "nodenext",
-    "moduleResolution": "nodenext",
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": ["esnext"],
     "types": ["node"],
     "rootDir": "src",
     "outDir": "build",
@@ -19,7 +18,8 @@
     "moduleDetection": "force",
     "allowJs": true,
     "resolveJsonModule": true,
-    "experimentalDecorators": true
+    "experimentalDecorators": true,
+    "moduleResolution": "nodenext"
   },
   "include": ["./src/*.ts", "./src/**/*.ts"]
 }

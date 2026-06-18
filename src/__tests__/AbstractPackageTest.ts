@@ -1,4 +1,4 @@
-import { writeFile } from 'fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { fakeWriteFile, resetCallsToWriteFile } from '@neurodevs/fake-node-core'
 import AbstractModuleTest from '@neurodevs/node-tdd'
 import { XdfFileLoader, FakeXdfLoader } from '@neurodevs/node-xdf'

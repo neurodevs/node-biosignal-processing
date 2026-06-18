@@ -1,4 +1,4 @@
-import * as fs from 'fs'
+import * as fs from 'node:fs'
 import { parse } from 'fast-csv'
 
 export default async function loadPpgData(fileName: string) {
