@@ -10,6 +10,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     private xdfInputPath: string
     private outputDir: string
     private loader: XdfLoader
+    private totalSecs?: number
 
     private xdfFile!: XdfFile
     private streamResults!: StreamResult[]
@@ -17,16 +18,29 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     private readonly tenSeconds = 10
 
     protected constructor(options: JitterGrapherConstructorOptions) {
-        const { xdfInputPath, outputDir, loader } = options
+        const { xdfInputPath, outputDir, loader, totalSecs } = options
 
         this.xdfInputPath = xdfInputPath
         this.outputDir = outputDir
         this.loader = loader
+        this.totalSecs = totalSecs
     }
 
-    public static async Create(xdfInputPath: string, outputDir: string) {
+    public static async Create(
+        xdfInputPath: string,
+        outputDir: string,
+        options?: JitterGrapherOptions
+    ) {
+        const { totalSecs } = options ?? {}
+
         const loader = await this.XdfFileLoader()
-        return new (this.Class ?? this)({ xdfInputPath, outputDir, loader })
+
+        return new (this.Class ?? this)({
+            xdfInputPath,
+            outputDir,
+            loader,
+            totalSecs,
+        })
     }
 
     public async run() {
@@ -45,7 +59,8 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
         this.streamResults = this.streams.map(
             ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
-                const maxIndex = this.tenSeconds * nominalSampleRateHz
+                const maxIndex =
+                    (this.totalSecs ?? this.tenSeconds) * nominalSampleRateHz
 
                 const intervalsMs = timestamps
                     .slice(1, maxIndex)
@@ -176,7 +191,8 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                 this.streamResults[streamIndex]
 
             const timestamps = stream.timestamps.slice(1)
-            const maxIndex = this.tenSeconds * nominalSampleRateHz
+            const maxIndex =
+                (this.totalSecs ?? this.tenSeconds) * nominalSampleRateHz
             const idealIntervalMs = 1000 / nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
@@ -205,11 +221,15 @@ export interface JitterGrapher {
     run(): Promise<void>
 }
 
+export interface JitterGrapherOptions {
+    totalSecs?: number
+}
+
 export type JitterGrapherConstructor = new (
     options: JitterGrapherConstructorOptions
 ) => JitterGrapher
 
-export interface JitterGrapherConstructorOptions {
+export interface JitterGrapherConstructorOptions extends JitterGrapherOptions {
     xdfInputPath: string
     outputDir: string
     loader: XdfLoader

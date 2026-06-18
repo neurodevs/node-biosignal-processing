@@ -8,6 +8,7 @@ import { parse, View } from 'vega'
 import { TopLevelSpec, compile } from 'vega-lite'
 import TimestampJitterGrapher, {
     JitterGrapher,
+    JitterGrapherOptions,
 } from '../../impl/TimestampJitterGrapher.js'
 import AbstractPackageTest from '../AbstractPackageTest.js'
 
@@ -115,6 +116,26 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             assert.isTrue(
                 numIntervals <= expected,
                 `Stream result has more than 10 seconds of data! Found ${numIntervals} intervals, expected maximum ${expected}.`
+            )
+        }
+    }
+
+    @test()
+    protected static async providesTotalSecsOptions() {
+        const instance = await this.TimestampJitterGrapher({
+            totalSecs: 1,
+        })
+        await instance.run()
+
+        const streamResults = JSON.parse(callsToWriteFile[0].data).streamResults
+
+        for (const streamResult of streamResults) {
+            const numIntervals = streamResult.intervalsMs.length
+            const expected = 1 * streamResult.nominalSampleRateHz
+
+            assert.isTrue(
+                numIntervals <= expected,
+                `Stream result has too much data! Found ${numIntervals} intervals, expected maximum ${expected}.`
             )
         }
     }
@@ -277,7 +298,13 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         streamResults: this.fakeStreamResults,
     }
 
-    private static async TimestampJitterGrapher() {
-        return TimestampJitterGrapher.Create(this.xdfInputPath, this.outputDir)
+    private static async TimestampJitterGrapher(
+        options?: JitterGrapherOptions
+    ) {
+        return TimestampJitterGrapher.Create(
+            this.xdfInputPath,
+            this.outputDir,
+            options
+        )
     }
 }
