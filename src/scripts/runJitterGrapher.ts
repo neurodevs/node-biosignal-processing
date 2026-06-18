@@ -2,7 +2,8 @@ import TimestampJitterGrapher from '../impl/TimestampJitterGrapher.js'
 
 const grapher = await TimestampJitterGrapher.Create(
     './artifacts/test.xdf',
-    './artifacts'
+    './artifacts',
+    { totalSecs: 1 }
 )
 
 await grapher.run()
