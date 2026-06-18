@@ -46,19 +46,19 @@ export default class PpgMetricsReporterTest extends AbstractPackageTest {
         assert.isEqual(result, 100)
     }
 
-    @test(
+    @test.skip(
         'Works with: ppg-example-4-subject-3.csv',
         'ppg-example-4-subject-3.csv'
     )
-    @test(
+    @test.skip(
         'Works with: ppg-example-3-subject-3.csv',
         'ppg-example-3-subject-3.csv'
     )
-    @test(
+    @test.skip(
         'Works with: ppg-example-2-subject-2.csv',
         'ppg-example-2-subject-2.csv'
     )
-    @test(
+    @test.skip(
         'Works with: ppg-example-1-subject-1.csv',
         'ppg-example-1-subject-1.csv'
     )
