@@ -19,7 +19,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         const { xdfInputPath, outputDir, loader, totalSecs } = options
 
         this.xdfInputPath = xdfInputPath
-        this.totalSecs = totalSecs ?? 10
+        this.totalSecs = totalSecs ?? 1
         this.outputDir = outputDir
         this.loader = loader
     }

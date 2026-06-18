@@ -15,7 +15,7 @@ import AbstractPackageTest from '../AbstractPackageTest.js'
 export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     private static instance: JitterGrapher
 
-    private static readonly tenSeconds = 10
+    private static readonly oneSecond = 1
 
     protected static async beforeEach() {
         await super.beforeEach()
@@ -111,7 +111,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
         for (const streamResult of streamResults) {
             const numIntervals = streamResult.intervalsMs.length
-            const expected = this.tenSeconds * streamResult.nominalSampleRateHz
+            const expected = this.oneSecond * streamResult.nominalSampleRateHz
 
             assert.isTrue(
                 numIntervals <= expected,
@@ -219,7 +219,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                 this.fakeStreamResults[streamIndex]
 
             const timestamps = stream.timestamps.slice(1)
-            const maxIndex = this.tenSeconds * nominalSampleRateHz
+            const maxIndex = this.oneSecond * nominalSampleRateHz
             const idealIntervalMs = 1000 / nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
@@ -277,7 +277,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
     private static readonly fakeStreamResults = this.fakeStreams.map(
         ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
-            const maxIndex = this.tenSeconds * nominalSampleRateHz
+            const maxIndex = this.oneSecond * nominalSampleRateHz
 
             const intervalsMs = timestamps
                 .slice(1, maxIndex)
