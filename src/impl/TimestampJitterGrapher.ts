@@ -9,6 +9,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
     private xdfInputPath: string
     private totalSecs: number
+    private xAxisUnits: 'milliseconds' | 'seconds'
     private outputDir: string
     private loader: XdfLoader
 
@@ -16,10 +17,17 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     private streamResults!: StreamResult[]
 
     protected constructor(options: JitterGrapherConstructorOptions) {
-        const { xdfInputPath, outputDir, loader, totalSecs } = options
+        const {
+            xdfInputPath,
+            totalSecs = 1,
+            xAxisUnits = 'milliseconds',
+            outputDir,
+            loader,
+        } = options
 
         this.xdfInputPath = xdfInputPath
-        this.totalSecs = totalSecs ?? 1
+        this.totalSecs = totalSecs
+        this.xAxisUnits = xAxisUnits
         this.outputDir = outputDir
         this.loader = loader
     }
@@ -29,13 +37,14 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         outputDir: string,
         options?: JitterGrapherOptions
     ) {
-        const { totalSecs } = options ?? {}
+        const { totalSecs, xAxisUnits } = options ?? {}
 
         const loader = await this.XdfFileLoader()
 
         return new (this.Class ?? this)({
             xdfInputPath,
             totalSecs,
+            xAxisUnits,
             outputDir,
             loader,
         })
@@ -138,9 +147,9 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                         },
                         encoding: {
                             x: {
-                                field: 'timeSec',
+                                field: this.useMs ? 'timeMs' : 'timeSec',
                                 type: 'quantitative',
-                                title: 'Time (s)',
+                                title: this.useMs ? 'Time (ms)' : 'Time (s)',
                                 axis: {
                                     tickMinStep: 1,
                                 },
@@ -175,10 +184,15 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         )
     }
 
+    private get useMs() {
+        return this.xAxisUnits === 'milliseconds'
+    }
+
     private flattenIntervalsForPlot() {
         const rows: {
             streamName: string
-            timeSec: number
+            timeSec?: number
+            timeMs?: number
             intervalMs: number
         }[] = []
 
@@ -190,9 +204,12 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             const maxIndex = this.totalSecs * nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
+                const delta = timestamps[i] - timestamps[0]
                 rows.push({
                     streamName: stream.name,
-                    timeSec: timestamps[i] - timestamps[0],
+                    ...(this.useMs
+                        ? { timeMs: delta * 1000 }
+                        : { timeSec: delta }),
                     intervalMs: intervalsMs[i],
                 })
             }
@@ -216,6 +233,7 @@ export interface JitterGrapher {
 
 export interface JitterGrapherOptions {
     totalSecs?: number
+    xAxisUnits?: 'milliseconds' | 'seconds'
 }
 
 export type JitterGrapherConstructor = new (

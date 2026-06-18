@@ -121,6 +121,39 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     @test()
+    protected static async defaultsXAxisUnitsToMilliseconds() {
+        await this.run()
+
+        assert.isEqualDeep(
+            callsToWriteFile[1],
+            {
+                file: `${this.outputDir}/intervals_over_time.png`,
+                data: await this.generateBuffer({ xAxisUnits: 'milliseconds' }),
+                options: undefined,
+            },
+            'Default xAxisUnits is not milliseconds!'
+        )
+    }
+
+    @test()
+    protected static async supportsSecondsForXAxisUnits() {
+        const instance = await this.TimestampJitterGrapher({
+            xAxisUnits: 'seconds',
+        })
+        await instance.run()
+
+        assert.isEqualDeep(
+            callsToWriteFile[1],
+            {
+                file: `${this.outputDir}/intervals_over_time.png`,
+                data: await this.generateBuffer({ xAxisUnits: 'seconds' }),
+                options: undefined,
+            },
+            'xAxisUnits is not seconds!'
+        )
+    }
+
+    @test()
     protected static async providesTotalSecsOptions() {
         const instance = await this.TimestampJitterGrapher({
             totalSecs: 1,
@@ -144,8 +177,11 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         await this.instance.run()
     }
 
-    private static async generateBuffer() {
-        const data = this.flattenIntervalsForPlot()
+    private static async generateBuffer(options?: JitterGrapherOptions) {
+        const { xAxisUnits = 'milliseconds' } = options ?? {}
+
+        const useMs = xAxisUnits === 'milliseconds'
+        const data = this.flattenIntervalsForPlot(useMs)
 
         const vlSpec: TopLevelSpec = {
             $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
@@ -172,9 +208,9 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                         },
                         encoding: {
                             x: {
-                                field: 'timeSec',
+                                field: useMs ? 'timeMs' : 'timeSec',
                                 type: 'quantitative',
-                                title: 'Time (s)',
+                                title: useMs ? 'Time (ms)' : 'Time (s)',
                                 axis: {
                                     tickMinStep: 1,
                                 },
@@ -206,10 +242,11 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         return buffer
     }
 
-    private static flattenIntervalsForPlot() {
+    private static flattenIntervalsForPlot(useMs = true) {
         const rows: {
             streamName: string
-            timeSec: number
+            timeSec?: number
+            timeMs?: number
             intervalMs: number
         }[] = []
 
@@ -221,9 +258,10 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             const maxIndex = this.oneSecond * nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
+                const delta = timestamps[i] - timestamps[0]
                 rows.push({
                     streamName: stream.name,
-                    timeSec: timestamps[i] - timestamps[0],
+                    ...(useMs ? { timeMs: delta * 1000 } : { timeSec: delta }),
                     intervalMs: intervalsMs[i],
                 })
             }
