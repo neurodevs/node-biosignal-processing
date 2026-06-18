@@ -8,22 +8,20 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     public static writeFile = writeFile
 
     private xdfInputPath: string
+    private totalSecs: number
     private outputDir: string
     private loader: XdfLoader
-    private totalSecs?: number
 
     private xdfFile!: XdfFile
     private streamResults!: StreamResult[]
-
-    private readonly tenSeconds = 10
 
     protected constructor(options: JitterGrapherConstructorOptions) {
         const { xdfInputPath, outputDir, loader, totalSecs } = options
 
         this.xdfInputPath = xdfInputPath
+        this.totalSecs = totalSecs ?? 10
         this.outputDir = outputDir
         this.loader = loader
-        this.totalSecs = totalSecs
     }
 
     public static async Create(
@@ -37,9 +35,9 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
         return new (this.Class ?? this)({
             xdfInputPath,
+            totalSecs,
             outputDir,
             loader,
-            totalSecs,
         })
     }
 
@@ -59,8 +57,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
         this.streamResults = this.streams.map(
             ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
-                const maxIndex =
-                    (this.totalSecs ?? this.tenSeconds) * nominalSampleRateHz
+                const maxIndex = this.totalSecs * nominalSampleRateHz
 
                 const intervalsMs = timestamps
                     .slice(1, maxIndex)
@@ -191,8 +188,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                 this.streamResults[streamIndex]
 
             const timestamps = stream.timestamps.slice(1)
-            const maxIndex =
-                (this.totalSecs ?? this.tenSeconds) * nominalSampleRateHz
+            const maxIndex = this.totalSecs * nominalSampleRateHz
             const idealIntervalMs = 1000 / nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
