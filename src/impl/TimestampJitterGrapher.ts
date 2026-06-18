@@ -180,7 +180,6 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             streamName: string
             timeSec: number
             intervalMs: number
-            idealIntervalMs: number
         }[] = []
 
         this.streams.forEach((stream, streamIndex) => {
@@ -189,14 +188,12 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
             const timestamps = stream.timestamps.slice(1)
             const maxIndex = this.totalSecs * nominalSampleRateHz
-            const idealIntervalMs = 1000 / nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
                 rows.push({
                     streamName: stream.name,
                     timeSec: timestamps[i] - timestamps[0],
                     intervalMs: intervalsMs[i],
-                    idealIntervalMs,
                 })
             }
         })

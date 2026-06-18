@@ -211,7 +211,6 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             streamName: string
             timeSec: number
             intervalMs: number
-            idealIntervalMs: number
         }[] = []
 
         this.fakeStreams.forEach((stream, streamIndex) => {
@@ -220,14 +219,12 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
             const timestamps = stream.timestamps.slice(1)
             const maxIndex = this.oneSecond * nominalSampleRateHz
-            const idealIntervalMs = 1000 / nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
                 rows.push({
                     streamName: stream.name,
                     timeSec: timestamps[i] - timestamps[0],
                     intervalMs: intervalsMs[i],
-                    idealIntervalMs,
                 })
             }
         })
