@@ -154,6 +154,172 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     @test()
+    protected static async defaultsIgnoreInterpolatedTimestampsToFalse() {
+        const hz = 4
+        const nominalIntervalSec = 1 / hz
+
+        const timestamps = [
+            0,
+            nominalIntervalSec,
+            nominalIntervalSec * 2 + 0.005,
+            nominalIntervalSec * 3 + 0.005,
+        ]
+
+        const stream = this.createFakeStream({
+            channelCount: 1,
+            nominalSampleRateHz: hz,
+            timestamps,
+            data: timestamps.map(() => [Math.random()]),
+        })
+
+        FakeXdfLoader.fakeResponse = { path: '', streams: [stream], events: [] }
+
+        await this.run()
+
+        const { intervalsMs } = JSON.parse(callsToWriteFile[0].data)
+            .streamResults[0]
+
+        assert.isEqual(
+            intervalsMs.length,
+            3,
+            'Expected all intervals when ignoreInterpolatedTimestamps defaults to false!'
+        )
+    }
+
+    @test()
+    protected static async ignoresInterpolatedTimestampsWithFloatingPointDrift() {
+        const hz = 52
+        const nominalIntervalSec = 1 / hz
+
+        // Simulate real-world interpolated timestamps that don't land exactly
+        // on 1000/52 = 19.230769230769234 due to floating-point accumulation
+        const interpolatedIntervalSec = 0.019230769248679280 // ≈ 19.23076924867928 ms
+
+        const timestamps = [
+            0,
+            interpolatedIntervalSec,         // interpolated → should be filtered
+            interpolatedIntervalSec * 2,     // interpolated → should be filtered
+            interpolatedIntervalSec * 2 + nominalIntervalSec + 0.005, // jittered → kept
+        ]
+
+        const stream = this.createFakeStream({
+            channelCount: 1,
+            nominalSampleRateHz: hz,
+            timestamps,
+            data: timestamps.map(() => [Math.random()]),
+        })
+
+        FakeXdfLoader.fakeResponse = { path: '', streams: [stream], events: [] }
+
+        const instance = await this.TimestampJitterGrapher({
+            ignoreInterpolatedTimestamps: true,
+        })
+        await instance.run()
+
+        const { intervalsMs } = JSON.parse(callsToWriteFile[0].data)
+            .streamResults[0]
+
+        assert.isEqual(
+            intervalsMs.length,
+            1,
+            `Expected only the jittered interval to survive, got ${intervalsMs.length} intervals: ${JSON.stringify(intervalsMs)}`
+        )
+    }
+
+    @test()
+    protected static async ignoresInterpolatedTimestampsWhenEnabled() {
+        const hz = 4
+        const nominalIntervalSec = 1 / hz
+
+        const timestamps = [
+            0,
+            nominalIntervalSec,                    // exact → filtered
+            nominalIntervalSec * 2 + 0.005,        // jittered → kept
+            nominalIntervalSec * 3 + 0.005,        // exact relative → filtered
+        ]
+
+        const stream = this.createFakeStream({
+            channelCount: 1,
+            nominalSampleRateHz: hz,
+            timestamps,
+            data: timestamps.map(() => [Math.random()]),
+        })
+
+        FakeXdfLoader.fakeResponse = { path: '', streams: [stream], events: [] }
+
+        const instance = await this.TimestampJitterGrapher({
+            ignoreInterpolatedTimestamps: true,
+        })
+        await instance.run()
+
+        const { intervalsMs } = JSON.parse(callsToWriteFile[0].data)
+            .streamResults[0]
+
+        assert.isEqual(
+            intervalsMs.length,
+            1,
+            `Expected only the jittered interval to survive, got ${intervalsMs.length} intervals!`
+        )
+
+        assert.isEqual(
+            intervalsMs[0],
+            (timestamps[2] - timestamps[1]) * 1000,
+            'Expected the kept interval to be the jittered one!'
+        )
+    }
+
+    @test()
+    protected static async plotsFilteredIntervalsAtCorrectTimestamp() {
+        const hz = 4
+        const nominalIntervalSec = 1 / hz
+
+        const timestamps = [
+            0,
+            nominalIntervalSec,                    // exact → filtered
+            nominalIntervalSec * 2 + 0.005,        // jittered → kept
+            nominalIntervalSec * 3 + 0.005,        // exact relative → filtered
+        ]
+
+        const stream = this.createFakeStream({
+            channelCount: 1,
+            nominalSampleRateHz: hz,
+            timestamps,
+            data: timestamps.map(() => [Math.random()]),
+        })
+
+        FakeXdfLoader.fakeResponse = { path: '', streams: [stream], events: [] }
+
+        const instance = await this.TimestampJitterGrapher({
+            ignoreInterpolatedTimestamps: true,
+        })
+        await instance.run()
+
+        // The surviving interval should appear at x = timestamps[2] - timestamps[1]
+        // (i.e. its actual position in the sliced timestamp array), not x = 0
+        const survivingTimestampMs =
+            (timestamps[2] - timestamps[1]) * 1000
+        const survivingIntervalMs =
+            (timestamps[2] - timestamps[1]) * 1000
+
+        const expectedBuffer = await this.generateBufferFromData(
+            [
+                {
+                    streamName: stream.name,
+                    timeMs: survivingTimestampMs,
+                    intervalMs: survivingIntervalMs,
+                },
+            ],
+            true
+        )
+
+        assert.isEqualDeep(
+            callsToWriteFile[1].data,
+            expectedBuffer,
+            'Filtered interval should be plotted at the correct timestamp, not at x=0!'
+        )
+    }
+
+    @test()
     protected static async providesTotalSecsOptions() {
         const instance = await this.TimestampJitterGrapher({
             totalSecs: 1,
@@ -175,6 +341,53 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
     private static async run() {
         await this.instance.run()
+    }
+
+    private static async generateBufferFromData(
+        data: { streamName: string; timeSec?: number; timeMs?: number; intervalMs: number }[],
+        useMs: boolean
+    ) {
+        const vlSpec: TopLevelSpec = {
+            $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
+            data: { values: data },
+            facet: {
+                row: {
+                    field: 'streamName',
+                    type: 'nominal',
+                    title: null,
+                    header: { labelAngle: 0, labelAlign: 'left' },
+                },
+            },
+            spec: {
+                width: 800,
+                height: 200,
+                layer: [
+                    {
+                        mark: { type: 'tick', thickness: 2 },
+                        encoding: {
+                            x: {
+                                field: useMs ? 'timeMs' : 'timeSec',
+                                type: 'quantitative',
+                                title: useMs ? 'Time (ms)' : 'Time (s)',
+                                axis: { tickMinStep: 1 },
+                            },
+                            y: {
+                                field: 'intervalMs',
+                                type: 'quantitative',
+                                title: 'ΔT = T(t+1) − T(t) (ms)',
+                            },
+                        },
+                    },
+                ],
+            },
+            resolve: { scale: { x: 'shared' } },
+        } as const
+
+        const vgSpec = compile(vlSpec).spec
+        const runtime = parse(vgSpec)
+        const view = new View(runtime, { renderer: 'none' }).initialize()
+        const canvas = await view.toCanvas()
+        return canvas.toBuffer('image/png')
     }
 
     private static async generateBuffer(options?: JitterGrapherOptions) {
@@ -251,18 +464,19 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
         }[] = []
 
         this.fakeStreams.forEach((stream, streamIndex) => {
-            const { intervalsMs, nominalSampleRateHz } =
-                this.fakeStreamResults[streamIndex]
+            const { nominalSampleRateHz } = this.fakeStreamResults[streamIndex]
 
             const timestamps = stream.timestamps.slice(1)
             const maxIndex = this.oneSecond * nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
+                const intervalMs =
+                    (stream.timestamps[i + 1] - stream.timestamps[i]) * 1000
                 const delta = timestamps[i] - timestamps[0]
                 rows.push({
                     streamName: stream.name,
                     ...(useMs ? { timeMs: delta * 1000 } : { timeSec: delta }),
-                    intervalMs: intervalsMs[i],
+                    intervalMs,
                 })
             }
         })

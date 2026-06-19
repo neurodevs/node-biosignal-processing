@@ -10,6 +10,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     private xdfInputPath: string
     private totalSecs: number
     private xAxisUnits: 'milliseconds' | 'seconds'
+    private ignoreInterpolatedTimestamps: boolean
     private outputDir: string
     private loader: XdfLoader
 
@@ -21,6 +22,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             xdfInputPath,
             totalSecs = 1,
             xAxisUnits = 'milliseconds',
+            ignoreInterpolatedTimestamps = false,
             outputDir,
             loader,
         } = options
@@ -28,6 +30,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         this.xdfInputPath = xdfInputPath
         this.totalSecs = totalSecs
         this.xAxisUnits = xAxisUnits
+        this.ignoreInterpolatedTimestamps = ignoreInterpolatedTimestamps
         this.outputDir = outputDir
         this.loader = loader
     }
@@ -37,7 +40,8 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         outputDir: string,
         options?: JitterGrapherOptions
     ) {
-        const { totalSecs, xAxisUnits } = options ?? {}
+        const { totalSecs, xAxisUnits, ignoreInterpolatedTimestamps } =
+            options ?? {}
 
         const loader = await this.XdfFileLoader()
 
@@ -45,6 +49,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             xdfInputPath,
             totalSecs,
             xAxisUnits,
+            ignoreInterpolatedTimestamps,
             outputDir,
             loader,
         })
@@ -68,9 +73,16 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
                 const maxIndex = this.totalSecs * nominalSampleRateHz
 
+                const nominalIntervalMs = 1000 / nominalSampleRateHz
+
                 const intervalsMs = timestamps
                     .slice(1, maxIndex)
                     .map((t, i) => (t - timestamps[i]) * 1000)
+                    .filter((ms) =>
+                        this.ignoreInterpolatedTimestamps
+                            ? Math.abs(ms - nominalIntervalMs) > 0.001
+                            : true
+                    )
 
                 return {
                     ...rest,
@@ -197,20 +209,30 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         }[] = []
 
         this.streams.forEach((stream, streamIndex) => {
-            const { intervalsMs, nominalSampleRateHz } =
-                this.streamResults[streamIndex]
+            const { nominalSampleRateHz } = this.streamResults[streamIndex]
 
+            const nominalIntervalMs = 1000 / nominalSampleRateHz
             const timestamps = stream.timestamps.slice(1)
             const maxIndex = this.totalSecs * nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
+                const intervalMs =
+                    (stream.timestamps[i + 1] - stream.timestamps[i]) * 1000
+
+                if (
+                    this.ignoreInterpolatedTimestamps &&
+                    Math.abs(intervalMs - nominalIntervalMs) <= 0.001
+                ) {
+                    continue
+                }
+
                 const delta = timestamps[i] - timestamps[0]
                 rows.push({
                     streamName: stream.name,
                     ...(this.useMs
                         ? { timeMs: delta * 1000 }
                         : { timeSec: delta }),
-                    intervalMs: intervalsMs[i],
+                    intervalMs,
                 })
             }
         })
@@ -234,6 +256,7 @@ export interface JitterGrapher {
 export interface JitterGrapherOptions {
     totalSecs?: number
     xAxisUnits?: 'milliseconds' | 'seconds'
+    ignoreInterpolatedTimestamps?: boolean
 }
 
 export type JitterGrapherConstructor = new (
