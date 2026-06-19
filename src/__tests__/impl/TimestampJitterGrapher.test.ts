@@ -154,6 +154,39 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     @test()
+    protected static async defaultsShowIdealIntervalMsToTrue() {
+        await this.run()
+
+        assert.isEqualDeep(
+            callsToWriteFile[1],
+            {
+                file: `${this.outputDir}/intervals_over_time.png`,
+                data: await this.generateBuffer({ showIdealIntervalMs: true }),
+                options: undefined,
+            },
+            'showIdealIntervalMs should default to true!'
+        )
+    }
+
+    @test()
+    protected static async canHideIdealIntervalMsLine() {
+        const instance = await this.TimestampJitterGrapher({
+            showIdealIntervalMs: false,
+        })
+        await instance.run()
+
+        assert.isEqualDeep(
+            callsToWriteFile[1],
+            {
+                file: `${this.outputDir}/intervals_over_time.png`,
+                data: await this.generateBuffer({ showIdealIntervalMs: false }),
+                options: undefined,
+            },
+            'showIdealIntervalMs: false should omit the red line!'
+        )
+    }
+
+    @test()
     protected static async defaultsIgnoreInterpolatedTimestampsToFalse() {
         const hz = 4
         const nominalIntervalSec = 1 / hz
@@ -193,12 +226,12 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
         // Simulate real-world interpolated timestamps that don't land exactly
         // on 1000/52 = 19.230769230769234 due to floating-point accumulation
-        const interpolatedIntervalSec = 0.019230769248679280 // ≈ 19.23076924867928 ms
+        const interpolatedIntervalSec = 0.01923076924867928 // ≈ 19.23076924867928 ms
 
         const timestamps = [
             0,
-            interpolatedIntervalSec,         // interpolated → should be filtered
-            interpolatedIntervalSec * 2,     // interpolated → should be filtered
+            interpolatedIntervalSec, // interpolated → should be filtered
+            interpolatedIntervalSec * 2, // interpolated → should be filtered
             interpolatedIntervalSec * 2 + nominalIntervalSec + 0.005, // jittered → kept
         ]
 
@@ -233,9 +266,9 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
         const timestamps = [
             0,
-            nominalIntervalSec,                    // exact → filtered
-            nominalIntervalSec * 2 + 0.005,        // jittered → kept
-            nominalIntervalSec * 3 + 0.005,        // exact relative → filtered
+            nominalIntervalSec, // exact → filtered
+            nominalIntervalSec * 2 + 0.005, // jittered → kept
+            nominalIntervalSec * 3 + 0.005, // exact relative → filtered
         ]
 
         const stream = this.createFakeStream({
@@ -275,9 +308,9 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
         const timestamps = [
             0,
-            nominalIntervalSec,                    // exact → filtered
-            nominalIntervalSec * 2 + 0.005,        // jittered → kept
-            nominalIntervalSec * 3 + 0.005,        // exact relative → filtered
+            nominalIntervalSec, // exact → filtered
+            nominalIntervalSec * 2 + 0.005, // jittered → kept
+            nominalIntervalSec * 3 + 0.005, // exact relative → filtered
         ]
 
         const stream = this.createFakeStream({
@@ -296,10 +329,8 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
         // The surviving interval should appear at x = timestamps[2] - timestamps[1]
         // (i.e. its actual position in the sliced timestamp array), not x = 0
-        const survivingTimestampMs =
-            (timestamps[2] - timestamps[1]) * 1000
-        const survivingIntervalMs =
-            (timestamps[2] - timestamps[1]) * 1000
+        const survivingTimestampMs = (timestamps[2] - timestamps[1]) * 1000
+        const survivingIntervalMs = (timestamps[2] - timestamps[1]) * 1000
 
         const expectedBuffer = await this.generateBufferFromData(
             [
@@ -307,6 +338,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                     streamName: stream.name,
                     timeMs: survivingTimestampMs,
                     intervalMs: survivingIntervalMs,
+                    idealMs: 1000 / hz,
                 },
             ],
             true
@@ -344,7 +376,13 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     private static async generateBufferFromData(
-        data: { streamName: string; timeSec?: number; timeMs?: number; intervalMs: number }[],
+        data: {
+            streamName: string
+            timeSec?: number
+            timeMs?: number
+            intervalMs: number
+            idealMs: number
+        }[],
         useMs: boolean
     ) {
         const vlSpec: TopLevelSpec = {
@@ -363,25 +401,39 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                 height: 200,
                 layer: [
                     {
-                        mark: { type: 'tick', thickness: 2 },
+                        mark: { type: 'tick' as const, thickness: 2 },
                         encoding: {
                             x: {
                                 field: useMs ? 'timeMs' : 'timeSec',
-                                type: 'quantitative',
+                                type: 'quantitative' as const,
                                 title: useMs ? 'Time (ms)' : 'Time (s)',
                                 axis: { tickMinStep: 1 },
                             },
                             y: {
                                 field: 'intervalMs',
-                                type: 'quantitative',
+                                type: 'quantitative' as const,
                                 title: 'ΔT = T(t+1) − T(t) (ms)',
+                            },
+                        },
+                    },
+                    {
+                        mark: {
+                            type: 'rule' as const,
+                            color: 'red',
+                            strokeWidth: 1,
+                        },
+                        encoding: {
+                            y: {
+                                field: 'idealMs',
+                                type: 'quantitative' as const,
+                                aggregate: 'mean' as const,
                             },
                         },
                     },
                 ],
             },
             resolve: { scale: { x: 'shared' } },
-        } as const
+        }
 
         const vgSpec = compile(vlSpec).spec
         const runtime = parse(vgSpec)
@@ -391,10 +443,39 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     private static async generateBuffer(options?: JitterGrapherOptions) {
-        const { xAxisUnits = 'milliseconds' } = options ?? {}
+        const { xAxisUnits = 'milliseconds', showIdealIntervalMs = true } =
+            options ?? {}
 
         const useMs = xAxisUnits === 'milliseconds'
         const data = this.flattenIntervalsForPlot(useMs)
+
+        const tickLayer = {
+            mark: { type: 'tick' as const, thickness: 2 },
+            encoding: {
+                x: {
+                    field: useMs ? 'timeMs' : 'timeSec',
+                    type: 'quantitative' as const,
+                    title: useMs ? 'Time (ms)' : 'Time (s)',
+                    axis: { tickMinStep: 1 },
+                },
+                y: {
+                    field: 'intervalMs',
+                    type: 'quantitative' as const,
+                    title: 'ΔT = T(t+1) − T(t) (ms)',
+                },
+            },
+        }
+
+        const ruleLayer = {
+            mark: { type: 'rule' as const, color: 'red', strokeWidth: 1 },
+            encoding: {
+                y: {
+                    field: 'idealMs',
+                    type: 'quantitative' as const,
+                    aggregate: 'mean' as const,
+                },
+            },
+        }
 
         const vlSpec: TopLevelSpec = {
             $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
@@ -404,45 +485,18 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                     field: 'streamName',
                     type: 'nominal',
                     title: null,
-                    header: {
-                        labelAngle: 0,
-                        labelAlign: 'left',
-                    },
+                    header: { labelAngle: 0, labelAlign: 'left' },
                 },
             },
             spec: {
                 width: 800,
                 height: 200,
-                layer: [
-                    {
-                        mark: {
-                            type: 'tick',
-                            thickness: 2,
-                        },
-                        encoding: {
-                            x: {
-                                field: useMs ? 'timeMs' : 'timeSec',
-                                type: 'quantitative',
-                                title: useMs ? 'Time (ms)' : 'Time (s)',
-                                axis: {
-                                    tickMinStep: 1,
-                                },
-                            },
-                            y: {
-                                field: 'intervalMs',
-                                type: 'quantitative',
-                                title: 'ΔT = T(t+1) − T(t) (ms)',
-                            },
-                        },
-                    },
-                ],
+                layer: showIdealIntervalMs
+                    ? [tickLayer, ruleLayer]
+                    : [tickLayer],
             },
-            resolve: {
-                scale: {
-                    x: 'shared',
-                },
-            },
-        } as const
+            resolve: { scale: { x: 'shared' } },
+        }
 
         const vgSpec = compile(vlSpec).spec
         const runtime = parse(vgSpec)
@@ -461,6 +515,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             timeSec?: number
             timeMs?: number
             intervalMs: number
+            idealMs: number
         }[] = []
 
         this.fakeStreams.forEach((stream, streamIndex) => {
@@ -468,6 +523,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
             const timestamps = stream.timestamps.slice(1)
             const maxIndex = this.oneSecond * nominalSampleRateHz
+            const idealMs = 1000 / nominalSampleRateHz
 
             for (let i = 0; i < maxIndex; i++) {
                 const intervalMs =
@@ -477,6 +533,7 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                     streamName: stream.name,
                     ...(useMs ? { timeMs: delta * 1000 } : { timeSec: delta }),
                     intervalMs,
+                    idealMs,
                 })
             }
         })

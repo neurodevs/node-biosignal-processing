@@ -11,6 +11,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     private totalSecs: number
     private xAxisUnits: 'milliseconds' | 'seconds'
     private ignoreInterpolatedTimestamps: boolean
+    private showIdealIntervalMs: boolean
     private outputDir: string
     private loader: XdfLoader
 
@@ -23,6 +24,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             totalSecs = 1,
             xAxisUnits = 'milliseconds',
             ignoreInterpolatedTimestamps = false,
+            showIdealIntervalMs = true,
             outputDir,
             loader,
         } = options
@@ -31,6 +33,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         this.totalSecs = totalSecs
         this.xAxisUnits = xAxisUnits
         this.ignoreInterpolatedTimestamps = ignoreInterpolatedTimestamps
+        this.showIdealIntervalMs = showIdealIntervalMs
         this.outputDir = outputDir
         this.loader = loader
     }
@@ -40,8 +43,12 @@ export default class TimestampJitterGrapher implements JitterGrapher {
         outputDir: string,
         options?: JitterGrapherOptions
     ) {
-        const { totalSecs, xAxisUnits, ignoreInterpolatedTimestamps } =
-            options ?? {}
+        const {
+            totalSecs,
+            xAxisUnits,
+            ignoreInterpolatedTimestamps,
+            showIdealIntervalMs,
+        } = options ?? {}
 
         const loader = await this.XdfFileLoader()
 
@@ -50,6 +57,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             totalSecs,
             xAxisUnits,
             ignoreInterpolatedTimestamps,
+            showIdealIntervalMs,
             outputDir,
             loader,
         })
@@ -134,6 +142,34 @@ export default class TimestampJitterGrapher implements JitterGrapher {
     private async writeIntervalsPlotPng() {
         const data = this.flattenIntervalsForPlot()
 
+        const tickLayer = {
+            mark: { type: 'tick' as const, thickness: 2 },
+            encoding: {
+                x: {
+                    field: this.useMs ? 'timeMs' : 'timeSec',
+                    type: 'quantitative' as const,
+                    title: this.useMs ? 'Time (ms)' : 'Time (s)',
+                    axis: { tickMinStep: 1 },
+                },
+                y: {
+                    field: 'intervalMs',
+                    type: 'quantitative' as const,
+                    title: 'ΔT = T(t+1) − T(t) (ms)',
+                },
+            },
+        }
+
+        const ruleLayer = {
+            mark: { type: 'rule' as const, color: 'red', strokeWidth: 1 },
+            encoding: {
+                y: {
+                    field: 'idealMs',
+                    type: 'quantitative' as const,
+                    aggregate: 'mean' as const,
+                },
+            },
+        }
+
         const vlSpec: TopLevelSpec = {
             $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
             data: { values: data },
@@ -142,45 +178,18 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                     field: 'streamName',
                     type: 'nominal',
                     title: null,
-                    header: {
-                        labelAngle: 0,
-                        labelAlign: 'left',
-                    },
+                    header: { labelAngle: 0, labelAlign: 'left' },
                 },
             },
             spec: {
                 width: 800,
                 height: 200,
-                layer: [
-                    {
-                        mark: {
-                            type: 'tick',
-                            thickness: 2,
-                        },
-                        encoding: {
-                            x: {
-                                field: this.useMs ? 'timeMs' : 'timeSec',
-                                type: 'quantitative',
-                                title: this.useMs ? 'Time (ms)' : 'Time (s)',
-                                axis: {
-                                    tickMinStep: 1,
-                                },
-                            },
-                            y: {
-                                field: 'intervalMs',
-                                type: 'quantitative',
-                                title: 'ΔT = T(t+1) − T(t) (ms)',
-                            },
-                        },
-                    },
-                ],
+                layer: this.showIdealIntervalMs
+                    ? [tickLayer, ruleLayer]
+                    : [tickLayer],
             },
-            resolve: {
-                scale: {
-                    x: 'shared',
-                },
-            },
-        } as const
+            resolve: { scale: { x: 'shared' } },
+        }
 
         const vgSpec = compile(vlSpec).spec
         const runtime = parse(vgSpec)
@@ -206,6 +215,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
             timeSec?: number
             timeMs?: number
             intervalMs: number
+            idealMs: number
         }[] = []
 
         this.streams.forEach((stream, streamIndex) => {
@@ -233,6 +243,7 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                         ? { timeMs: delta * 1000 }
                         : { timeSec: delta }),
                     intervalMs,
+                    idealMs: nominalIntervalMs,
                 })
             }
         })
@@ -257,6 +268,7 @@ export interface JitterGrapherOptions {
     totalSecs?: number
     xAxisUnits?: 'milliseconds' | 'seconds'
     ignoreInterpolatedTimestamps?: boolean
+    showIdealIntervalMs?: boolean
 }
 
 export type JitterGrapherConstructor = new (
