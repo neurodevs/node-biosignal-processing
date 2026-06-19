@@ -341,13 +341,57 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                     idealMs: 1000 / hz,
                 },
             ],
-            true
+            { useMs: true }
         )
 
         assert.isEqualDeep(
             callsToWriteFile[1].data,
             expectedBuffer,
             'Filtered interval should be plotted at the correct timestamp, not at x=0!'
+        )
+    }
+
+    @test()
+    protected static async idealLineOnlyExtendsToTotalSecs() {
+        const hz = 4
+        const nominalIntervalSec = 1 / hz
+
+        // 5 timestamps → 4 intervals, last interval ends at 1000ms
+        const timestamps = [
+            0,
+            nominalIntervalSec,
+            nominalIntervalSec * 2,
+            nominalIntervalSec * 3,
+            nominalIntervalSec * 4,
+        ]
+
+        const stream = this.createFakeStream({
+            channelCount: 1,
+            nominalSampleRateHz: hz,
+            timestamps,
+            data: timestamps.map(() => [Math.random()]),
+        })
+
+        FakeXdfLoader.fakeResponse = { path: '', streams: [stream], events: [] }
+
+        await this.TimestampJitterGrapher({ totalSecs: 1 }).then((i) => i.run())
+
+        const idealMs = 1000 / hz
+        const data = timestamps.slice(1).map((t, i) => ({
+            streamName: stream.name,
+            timeMs: (t - timestamps[1]) * 1000,
+            intervalMs: (t - timestamps[i]) * 1000,
+            idealMs,
+        }))
+
+        const expectedBuffer = await this.generateBufferFromData(data, {
+            totalSecs: 1,
+        })
+
+        assert.isEqualDeep(
+            callsToWriteFile[1].data,
+            expectedBuffer,
+            'Ideal interval line extends beyond the last data point!'
         )
     }
 
@@ -383,8 +427,10 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             intervalMs: number
             idealMs: number
         }[],
-        useMs: boolean
+        options: { useMs?: boolean; totalSecs?: number } = {}
     ) {
+        const { useMs = true, totalSecs = 1 } = options
+
         const vlSpec: TopLevelSpec = {
             $schema: 'https://vega.github.io/schema/vega-lite/v5.json',
             data: { values: data },
@@ -428,6 +474,8 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                                 type: 'quantitative' as const,
                                 aggregate: 'mean' as const,
                             },
+                            x: { datum: 0 },
+                            x2: { datum: totalSecs * (useMs ? 1000 : 1) },
                         },
                     },
                 ],
@@ -443,8 +491,11 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     private static async generateBuffer(options?: JitterGrapherOptions) {
-        const { xAxisUnits = 'milliseconds', showIdealIntervalMs = true } =
-            options ?? {}
+        const {
+            xAxisUnits = 'milliseconds',
+            showIdealIntervalMs = true,
+            totalSecs = 1,
+        } = options ?? {}
 
         const useMs = xAxisUnits === 'milliseconds'
         const data = this.flattenIntervalsForPlot(useMs)
@@ -474,6 +525,8 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
                     type: 'quantitative' as const,
                     aggregate: 'mean' as const,
                 },
+                x: { datum: 0 },
+                x2: { datum: totalSecs * (useMs ? 1000 : 1) },
             },
         }
 

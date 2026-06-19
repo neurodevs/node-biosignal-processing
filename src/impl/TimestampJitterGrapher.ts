@@ -167,6 +167,8 @@ export default class TimestampJitterGrapher implements JitterGrapher {
                     type: 'quantitative' as const,
                     aggregate: 'mean' as const,
                 },
+                x: { datum: 0 },
+                x2: { datum: this.totalSecs * (this.useMs ? 1000 : 1) },
             },
         }
 
