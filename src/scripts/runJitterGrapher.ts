@@ -6,7 +6,7 @@ const grapher = await TimestampJitterGrapher.Create(
     {
         totalSecs: 1,
         xAxisUnits: 'milliseconds',
-        ignoreInterpolatedTimestamps: true,
+        ignoreInterpolatedTimestamps: false,
         showIdealIntervalMs: true,
     }
 )
