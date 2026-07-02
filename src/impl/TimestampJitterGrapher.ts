@@ -79,13 +79,17 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
         this.streamResults = this.streams.map(
             ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
-                const maxIndex = this.totalSecs * nominalSampleRateHz
-
                 const nominalIntervalMs = 1000 / nominalSampleRateHz
+                const cutoffTimestamp = timestamps[0] + this.totalSecs
 
                 const intervalsMs = timestamps
-                    .slice(1, maxIndex)
-                    .map((t, i) => (t - timestamps[i]) * 1000)
+                    .slice(1)
+                    .map((t, i) => ({
+                        t,
+                        intervalMs: (t - timestamps[i]) * 1000,
+                    }))
+                    .filter(({ t }) => t <= cutoffTimestamp)
+                    .map(({ intervalMs }) => intervalMs)
                     .filter((ms) =>
                         this.ignoreInterpolatedTimestamps
                             ? Math.abs(ms - nominalIntervalMs) > 0.001
@@ -225,9 +229,13 @@ export default class TimestampJitterGrapher implements JitterGrapher {
 
             const nominalIntervalMs = 1000 / nominalSampleRateHz
             const timestamps = stream.timestamps.slice(1)
-            const maxIndex = this.totalSecs * nominalSampleRateHz
+            const cutoffTimestamp = stream.timestamps[0] + this.totalSecs
 
-            for (let i = 0; i < maxIndex; i++) {
+            for (let i = 0; i < timestamps.length; i++) {
+                if (stream.timestamps[i + 1] > cutoffTimestamp) {
+                    break
+                }
+
                 const intervalMs =
                     (stream.timestamps[i + 1] - stream.timestamps[i]) * 1000
 

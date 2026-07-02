@@ -396,6 +396,84 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
     }
 
     @test()
+    protected static async usesActualElapsedTimeNotNominalSampleCountForCutoff() {
+        const nominalHz = 4
+        const actualHz = 8
+
+        const actualIntervalSec = 1 / actualHz
+
+        const actualTimestamps = Array.from(
+            { length: 9 },
+            (_, i) => i * actualIntervalSec
+        )
+
+        const stream = this.createFakeStream({
+            channelCount: 1,
+            nominalSampleRateHz: nominalHz,
+            timestamps: actualTimestamps,
+            data: actualTimestamps.map(() => [Math.random()]),
+        })
+
+        FakeXdfLoader.fakeResponse = {
+            path: '',
+            streams: [stream],
+            events: [],
+        }
+
+        const instance = await this.TimestampJitterGrapher({ totalSecs: 1 })
+        await instance.run()
+
+        const { intervalsMs } = JSON.parse(callsToWriteFile[0].data)
+            .streamResults[0]
+
+        assert.isEqual(
+            intervalsMs.length,
+            8,
+            `Should include every interval within the actual 1 second of elapsed time, not just ${nominalHz} (the nominal-rate sample count)! Got ${intervalsMs.length}.`
+        )
+    }
+
+    @test()
+    protected static async excludesIntervalsPastActualElapsedCutoff() {
+        const nominalHz = 4
+        const actualHz = 2
+        const actualIntervalSec = 1 / actualHz
+
+        const actualTimestamps = [0, 0.5, 1.0, 1.5, 2.0]
+
+        const stream = this.createFakeStream({
+            channelCount: 1,
+            nominalSampleRateHz: nominalHz,
+            timestamps: actualTimestamps,
+            data: actualTimestamps.map(() => [Math.random()]),
+        })
+
+        FakeXdfLoader.fakeResponse = {
+            path: '',
+            streams: [stream],
+            events: [],
+        }
+
+        const instance = await this.TimestampJitterGrapher({ totalSecs: 1 })
+        await instance.run()
+
+        const { intervalsMs } = JSON.parse(callsToWriteFile[0].data)
+            .streamResults[0]
+
+        assert.isEqual(
+            intervalsMs.length,
+            2,
+            `Should only include intervals that actually land within totalSecs elapsed time! Got ${intervalsMs.length}.`
+        )
+
+        assert.isEqualDeep(
+            intervalsMs,
+            [actualIntervalSec * 1000, actualIntervalSec * 1000],
+            'Should not include intervals past the actual elapsed cutoff!'
+        )
+    }
+
+    @test()
     protected static async providesTotalSecsOptions() {
         const instance = await this.TimestampJitterGrapher({
             totalSecs: 1,
@@ -575,10 +653,14 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
             const { nominalSampleRateHz } = this.fakeStreamResults[streamIndex]
 
             const timestamps = stream.timestamps.slice(1)
-            const maxIndex = this.oneSecond * nominalSampleRateHz
+            const cutoffTimestamp = stream.timestamps[0] + this.oneSecond
             const idealMs = 1000 / nominalSampleRateHz
 
-            for (let i = 0; i < maxIndex; i++) {
+            for (let i = 0; i < timestamps.length; i++) {
+                if (stream.timestamps[i + 1] > cutoffTimestamp) {
+                    break
+                }
+
                 const intervalMs =
                     (stream.timestamps[i + 1] - stream.timestamps[i]) * 1000
                 const delta = timestamps[i] - timestamps[0]
@@ -636,11 +718,13 @@ export default class TimestampJitterGrapherTest extends AbstractPackageTest {
 
     private static readonly fakeStreamResults = this.fakeStreams.map(
         ({ data: _data, timestamps, nominalSampleRateHz, ...rest }) => {
-            const maxIndex = this.oneSecond * nominalSampleRateHz
+            const cutoffTimestamp = timestamps[0] + this.oneSecond
 
             const intervalsMs = timestamps
-                .slice(1, maxIndex)
-                .map((t, i) => (t - timestamps[i]) * 1000)
+                .slice(1)
+                .map((t, i) => ({ t, intervalMs: (t - timestamps[i]) * 1000 }))
+                .filter(({ t }) => t <= cutoffTimestamp)
+                .map(({ intervalMs }) => intervalMs)
 
             return {
                 ...rest,

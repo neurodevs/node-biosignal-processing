@@ -1,8 +1,8 @@
 import TimestampJitterGrapher from '../impl/TimestampJitterGrapher.js'
 
 const grapher = await TimestampJitterGrapher.Create(
-    './artifacts/test.xdf',
-    './artifacts',
+    './artifacts/muse_data.xdf',
+    './artifacts/',
     {
         totalSecs: 1,
         xAxisUnits: 'milliseconds',
