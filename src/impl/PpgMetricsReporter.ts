@@ -22,7 +22,10 @@ export default class PpgMetricsReporter implements PpgReporter {
         return new (this.Class ?? this)(options)
     }
 
-    public run(signal: number[], timestamps: number[]): PpgReporterResults {
+    public run(
+        signal: readonly number[],
+        timestamps: readonly number[]
+    ): PpgReporterResults {
         const middleIdx = Math.floor(signal.length / 2)
 
         const signalFirstHalf = signal.slice(0, middleIdx)
@@ -70,7 +73,10 @@ export default class PpgMetricsReporter implements PpgReporter {
         return ((meanSecondHalf - meanFirstHalf) / meanFirstHalf) * 100
     }
 
-    private calculateMetrics(signal: number[], timestamps: number[]) {
+    private calculateMetrics(
+        signal: readonly number[],
+        timestamps: readonly number[]
+    ) {
         const result = this.detector.run(signal, timestamps)
         const { peaks } = result
 
@@ -80,7 +86,7 @@ export default class PpgMetricsReporter implements PpgReporter {
         return { result, rrIntervals, hrvMean, hrMean }
     }
 
-    private calculateRrIntervals(peaks: DataPoint[]): number[] {
+    private calculateRrIntervals(peaks: readonly DataPoint[]): number[] {
         const result = new Array(peaks.length - 1)
 
         peaks.forEach((peak, index) => {
@@ -95,7 +101,7 @@ export default class PpgMetricsReporter implements PpgReporter {
         return result
     }
 
-    protected calculateHeartRateVariability(rrIntervals: number[]) {
+    protected calculateHeartRateVariability(rrIntervals: readonly number[]) {
         const squaredDifferences: number[] = []
 
         for (let i = 1; i < rrIntervals.length; i++) {
@@ -121,7 +127,7 @@ export default class PpgMetricsReporter implements PpgReporter {
         return (100 * Math.abs(a - b)) / a
     }
 
-    private calculateHeartRate(rrIntervals: number[]) {
+    private calculateHeartRate(rrIntervals: readonly number[]) {
         let validRrIntervals: number[] = []
 
         for (let i = 1; i < rrIntervals.length; i++) {
@@ -146,7 +152,10 @@ export default class PpgMetricsReporter implements PpgReporter {
 }
 
 export interface PpgReporter {
-    run(signal: number[], timestamps: number[]): PpgReporterResults
+    run(
+        signal: readonly number[],
+        timestamps: readonly number[]
+    ): PpgReporterResults
 }
 
 export type PpgReporterConstructor = new (

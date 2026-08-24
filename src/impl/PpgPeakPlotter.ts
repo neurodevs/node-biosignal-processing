@@ -83,7 +83,7 @@ export default class PpgPeakPlotter implements PpgPlotter {
     }
 
     private normalizeTimestamps(
-        timestampsInMs: number[],
+        timestampsInMs: readonly number[],
         minTimestampMs: number
     ) {
         const msPerSecond = 1000
@@ -96,7 +96,7 @@ export default class PpgPeakPlotter implements PpgPlotter {
 
     private generateDatasets(
         signals: PpgPeakDetectorResults,
-        normalizedTimestamps: number[]
+        normalizedTimestamps: readonly number[]
     ) {
         const {
             rawSignal,
@@ -138,7 +138,10 @@ export default class PpgPeakPlotter implements PpgPlotter {
         }
     }
 
-    private formatSignal(signal: number[], timestamps: number[]) {
+    private formatSignal(
+        signal: readonly number[],
+        timestamps: readonly number[]
+    ) {
         return signal.map((value, i) => {
             return {
                 x: timestamps[i]?.toString() ?? '',

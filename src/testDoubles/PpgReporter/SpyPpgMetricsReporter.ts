@@ -15,7 +15,7 @@ export default class SpyPpgMetricsReporter extends PpgMetricsReporter {
         return this.detector
     }
 
-    public calculateHeartRateVariability(rrIntervals: number[]) {
+    public calculateHeartRateVariability(rrIntervals: readonly number[]) {
         return super.calculateHeartRateVariability(rrIntervals)
     }
 }

@@ -50,7 +50,7 @@ export default class PpgPeakDetector implements PpgDetector {
         return new (this.Class ?? this)(options)
     }
 
-    public run(rawSignal: number[], timestamps: number[]) {
+    public run(rawSignal: readonly number[], timestamps: readonly number[]) {
         const rawSignalWithoutFirstSample = rawSignal.slice(1)
         const timestampsWithoutFirstSample = timestamps.slice(1)
 
@@ -69,7 +69,10 @@ export default class PpgPeakDetector implements PpgDetector {
 }
 
 export interface PpgDetector {
-    run(rawSignal: number[], timestamps: number[]): PpgPeakDetectorResults
+    run(
+        rawSignal: readonly number[],
+        timestamps: readonly number[]
+    ): PpgPeakDetectorResults
 }
 
 export type PpgDetectorConstructor = new (
