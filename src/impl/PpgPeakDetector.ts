@@ -77,7 +77,7 @@ export interface PpgDetector {
 
 export type PpgDetectorConstructor = new (
     options: PpgDetectorOptions
-) => PpgPeakDetector
+) => PpgDetector
 
 export interface PpgDetectorOptions {
     sampleRate: number

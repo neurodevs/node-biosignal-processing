@@ -1,13 +1,16 @@
 import { DataPoint } from '@neurodevs/node-signal-processing'
 
-import PpgPeakDetector, { PpgPeakDetectorResults } from './PpgPeakDetector.js'
+import PpgPeakDetector, {
+    PpgDetector,
+    PpgPeakDetectorResults,
+} from './PpgPeakDetector.js'
 
 export default class PpgMetricsReporter implements PpgReporter {
     public static Class?: PpgReporterConstructor
 
     protected sampleRate: number
     protected ignoreRrIntervalOverPercentDifferent: number
-    protected detector: PpgPeakDetector
+    protected detector: PpgDetector
 
     protected constructor(options: PpgReporterOptions) {
         const { sampleRate, ignoreRrIntervalThresholdPercent = 25 } = options
