@@ -42,8 +42,6 @@ export default class PpgPeakDetector implements PpgDetector {
         })
 
         this.detector = HilbertPeakDetector.Create()
-
-        debugger
     }
 
     public static Create(options: PpgDetectorOptions) {
