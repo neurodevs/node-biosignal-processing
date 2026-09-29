@@ -1,21 +1,23 @@
 import {
-    HilbertPeakDetector,
-    FirBandpassFilter,
-    PeakDetector,
-    Filter,
-    PeakDetectorResults,
+    detectPeaks,
+    DetectPeaksFn,
+    DetectPeaksResults,
+    firBandpassFilter,
+    FirBandpassFilterFn,
+    FirBandpassFilterOptions,
 } from '@neurodevs/node-signal-processing'
 
 export default class PpgPeakDetector implements PpgDetector {
     public static Class?: PpgDetectorConstructor
+    public static firBandpassFilter: FirBandpassFilterFn = firBandpassFilter
+    public static detectPeaks: DetectPeaksFn = detectPeaks
 
     protected sampleRate: number
     protected lowCutoffHz: number
     protected highCutoffHz: number
     protected numTaps: number
     protected attenuation: number
-    private filter: Filter
-    private detector: PeakDetector
+    private filterOptions: FirBandpassFilterOptions
 
     protected constructor(options: PpgDetectorOptions) {
         let {
@@ -32,16 +34,14 @@ export default class PpgPeakDetector implements PpgDetector {
         this.numTaps = numTaps ?? this.generateNumTaps(sampleRate)
         this.attenuation = attenuation
 
-        this.filter = FirBandpassFilter.Create({
+        this.filterOptions = {
             sampleRate,
             lowCutoffHz,
             highCutoffHz,
             numTaps: this.numTaps,
             attenuation,
             usePadding: true,
-        })
-
-        this.detector = HilbertPeakDetector.Create()
+        }
     }
 
     public static Create(options: PpgDetectorOptions) {
@@ -52,8 +52,15 @@ export default class PpgPeakDetector implements PpgDetector {
         const rawSignalWithoutFirstSample = rawSignal.slice(1)
         const timestampsWithoutFirstSample = timestamps.slice(1)
 
-        const filtered = this.filter.run(rawSignalWithoutFirstSample)
-        const result = this.detector.run(filtered, timestampsWithoutFirstSample)
+        const filtered = PpgPeakDetector.firBandpassFilter(
+            rawSignalWithoutFirstSample,
+            this.filterOptions
+        )
+
+        const result = PpgPeakDetector.detectPeaks(
+            filtered,
+            timestampsWithoutFirstSample
+        )
 
         return {
             ...result,
@@ -85,6 +92,6 @@ export interface PpgDetectorOptions {
     attenuation?: number
 }
 
-export interface PpgPeakDetectorResults extends PeakDetectorResults {
+export interface PpgPeakDetectorResults extends DetectPeaksResults {
     rawSignal: number[]
 }

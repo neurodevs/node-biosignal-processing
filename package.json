@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@neurodevs/node-server-plots": "^0.4.3",
-    "@neurodevs/node-signal-processing": "^3.0.5",
+    "@neurodevs/node-signal-processing": "^4.0.0",
     "@neurodevs/node-xdf": "^3.0.2",
     "canvas": "^3.2.3",
     "fast-csv": "^5.0.5",

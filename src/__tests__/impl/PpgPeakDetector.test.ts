@@ -1,6 +1,9 @@
 import { randomInt } from 'node:crypto'
 import {
-    FirBandpassFilter,
+    createFakeFirBandpassFilter,
+    createSpyDetectPeaks,
+    createSpyFirBandpassFilter,
+    SpyDetectPeaks,
     SpyFirBandpassFilter,
 } from '@neurodevs/node-signal-processing'
 import { test, assert } from '@neurodevs/node-tdd'
@@ -13,12 +16,18 @@ import AbstractPackageTest from '../AbstractPackageTest.js'
 
 export default class PpgPeakDetectorTest extends AbstractPackageTest {
     private static randomDetector: SpyPpgPeakDetector
-    private static randomOptions: PpgDetectorOptions
+    private static randomOptions: Required<PpgDetectorOptions>
     private static rawData: number[]
     private static timestamps: number[]
+    private static spyFilter: SpyFirBandpassFilter
+    private static spyDetectPeaks: SpyDetectPeaks
 
     protected static async beforeEach() {
-        FirBandpassFilter.Class = SpyFirBandpassFilter
+        this.spyFilter = createSpyFirBandpassFilter()
+        PpgPeakDetector.firBandpassFilter = this.spyFilter
+
+        this.spyDetectPeaks = createSpyDetectPeaks()
+        PpgPeakDetector.detectPeaks = this.spyDetectPeaks
 
         PpgPeakDetector.Class = SpyPpgPeakDetector
 
@@ -44,10 +53,37 @@ export default class PpgPeakDetectorTest extends AbstractPackageTest {
     }
 
     @test()
-    protected static async runCallsDependenciesAsExpected() {
+    protected static async runFiltersRawSignalWithoutFirstSample() {
         this.run()
 
-        assert.isEqual(SpyFirBandpassFilter.callsToRun.length, 1)
+        assert.isEqualDeep(this.spyFilter.calledWith, [
+            {
+                signal: this.rawData.slice(1),
+                options: {
+                    ...this.randomOptions,
+                    usePadding: true,
+                },
+            },
+        ])
+    }
+
+    @test()
+    protected static async runDetectsPeaksInFilteredSignal() {
+        const filtered = [0.1, 0.2, 0.3]
+        PpgPeakDetector.firBandpassFilter =
+            createFakeFirBandpassFilter(filtered)
+
+        this.run()
+
+        assert.isEqualDeep(
+            this.spyDetectPeaks.calledWith.map(
+                ({ filteredSignal, timestamps }) => ({
+                    filteredSignal,
+                    timestamps,
+                })
+            ),
+            [{ filteredSignal: filtered, timestamps: this.timestamps.slice(1) }]
+        )
     }
 
     @test()
